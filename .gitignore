@@ -6,3 +6,6 @@ dist/
 .DS_Store
 coverage/
 .env
+tests/**/*.js
+tests/**/*.d.ts
+tests/**/*.js.map
