@@ -1,0 +1,331 @@
+---
+/**
+ * index.astro — the wicked-signals landing page (wsig.wickedagile.com).
+ * Consumes the shared wicked-web chrome (Base + Topbar + Footer + SameGarden).
+ * The page owns only its content + an illustrative signal→route classifier demo;
+ * the chrome owns the topbar/footer and theming via [data-theme].
+ *
+ * HONESTY (per CANONICAL-MESSAGING.md §wicked-signals):
+ *   - v0.1.0, NOT published to npm → the install block is a source build, never
+ *     `npm install -g wicked-signals`.
+ *   - wicked-bus is OPTIONAL (fire-and-forget); signals runs fine with no bus.
+ */
+import Base from 'wicked-web/layouts/Base.astro';
+import Topbar from 'wicked-web/components/Topbar.astro';
+import Footer from 'wicked-web/components/Footer.astro';
+import SameGarden from 'wicked-web/components/SameGarden.astro';
+import '../styles/signals.css';
+
+const title = 'wicked-signals — text in, intent out';
+const description = 'wicked-signals classifies every inbound signal your agents receive — Slack threads, alerts, file changes, user requests — with Claude, assigns a confidence tier, and routes each one to exactly the right place. Store-first, so no signal is ever lost. Local-first TypeScript; wicked-bus optional. Early / pre-release.';
+const repo = 'https://github.com/mikeparcewski/wicked-signals';
+---
+
+<Base title={title} description={description}>
+  <Topbar pkg="wicked-signals" repo={repo} />
+
+  <!-- ── Hero ──────────────────────────────────────────────────────────── -->
+  <section class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <div class="kicker">Inference &amp; routing layer · wicked-* ecosystem</div>
+        <h1>Text in.<br><span class="y">Intent out.</span></h1>
+        <p class="lede">
+          Your agents get signals constantly — Slack threads, monitoring alerts,
+          file changes, user requests. wicked-signals classifies each one with
+          Claude and routes it to exactly the right place, <b>with confidence</b>.
+          So <em>"what should I do with this?"</em> stops being logic scattered
+          across your codebase.
+        </p>
+        <div class="hero-cta">
+          <a class="btn btn--primary" href="#pipeline">See the pipeline</a>
+          <a class="btn" href={repo} target="_blank" rel="noopener">GitHub ↗</a>
+        </div>
+        <div class="hero-badges">
+          <span class="badge">v0.1.0</span>
+          <span class="badge badge--warn">early / pre-release</span>
+          <span class="badge">TypeScript</span>
+          <span class="badge">local-first</span>
+        </div>
+      </div>
+
+      <!-- illustrative classifier demo -->
+      <div class="demo" role="group" aria-label="Signal classifier demo">
+        <div class="demo-bar">
+          <span class="demo-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="demo-title">wicked-signals ingest</span>
+          <span class="demo-live"><span class="pulse"></span>illustrative</span>
+        </div>
+        <div class="demo-body">
+          <div class="demo-picker" id="demoChips">
+            <button class="demo-chip is-active" data-sig="0" type="button">User request</button>
+            <button class="demo-chip" data-sig="1" type="button">Feature ask</button>
+            <button class="demo-chip" data-sig="2" type="button">Alert</button>
+            <button class="demo-chip" data-sig="3" type="button">Weak signal</button>
+          </div>
+
+          <div class="demo-in">
+            <span class="demo-tag">signal in</span>
+            <p class="demo-text" id="demoText">Summarize what changed in the last three commits.</p>
+          </div>
+
+          <div class="demo-flow" aria-hidden="true">
+            <span>classify</span><span class="fa">→</span><span>route</span><span class="fa">→</span><span>store + emit</span>
+          </div>
+
+          <div class="demo-out">
+            <div class="demo-row">
+              <span class="demo-tag">intent</span>
+              <span class="demo-val" id="demoType">direct</span>
+            </div>
+            <div class="demo-row">
+              <span class="demo-tag">confidence</span>
+              <span class="demo-conf">
+                <span class="demo-meter"><i id="demoMeter" style="width:79%"></i></span>
+                <span class="demo-num" id="demoNum">0.79</span>
+                <span class="demo-tier" id="demoTier" data-tier="med">MEDIUM</span>
+              </span>
+            </div>
+            <div class="demo-row">
+              <span class="demo-tag">route</span>
+              <span class="demo-route" id="demoRoute">direct_outcome</span>
+            </div>
+          </div>
+          <p class="demo-foot">Classification runs on Claude at ingest time. Values shown are illustrative.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Pipeline ──────────────────────────────────────────────────────── -->
+  <section class="band" id="pipeline">
+    <div class="wrap">
+      <div class="band-head">
+        <span class="kicker">One path, every signal</span>
+        <h2>signal in → classify → route → store + emit.</h2>
+        <p class="band-sub">Four deterministic steps. The only LLM call is the classify step; routing is a pure threshold comparison, and the store happens <b>before</b> anything else can fail.</p>
+      </div>
+      <ol class="pipe">
+        <li class="pipe-step">
+          <span class="pipe-num">01</span>
+          <h3>Ingest</h3>
+          <p>Text, a file, a monitoring alert, or an HTTP webhook (<code>POST /webhook</code>). The raw signal is persisted to SQLite first.</p>
+        </li>
+        <li class="pipe-step">
+          <span class="pipe-num">02</span>
+          <h3>Classify</h3>
+          <p>Claude reads the signal and returns an intent — <code>direct</code>, <code>crew-launch</code>, or <code>garden-action</code> — plus a confidence score.</p>
+        </li>
+        <li class="pipe-step">
+          <span class="pipe-num">03</span>
+          <h3>Route</h3>
+          <p>A confidence tier maps the intent to one of four targets. No model on the route path — it is a plain threshold decision.</p>
+        </li>
+        <li class="pipe-step">
+          <span class="pipe-num">04</span>
+          <h3>Store + emit</h3>
+          <p>The decision is written to the local ledger and four bus events fire — fire-and-forget, so a missing bus never blocks a signal.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ── Routing targets ───────────────────────────────────────────────── -->
+  <section class="band band--alt">
+    <div class="wrap">
+      <div class="band-head">
+        <span class="kicker">Four routing targets</span>
+        <h2>Every signal lands somewhere on purpose.</h2>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <span class="card-tag">direct_outcome</span>
+          <h3>Answered inline</h3>
+          <p>The intent can be resolved now. Claude returns the resolution text and the signal closes — no session, no queue.</p>
+        </div>
+        <div class="card">
+          <span class="card-tag">crew_idd</span>
+          <h3>Hand to a crew</h3>
+          <p>The signal needs a multi-step workflow — a feature, a spike, ops, analysis. It launches a wicked-crew session.</p>
+        </div>
+        <div class="card">
+          <span class="card-tag">aggregate</span>
+          <h3>Batch it</h3>
+          <p>Confidence is low. The signal is stored for aggregation instead of acting on a guess — weak signals never trigger work.</p>
+        </div>
+        <div class="card">
+          <span class="card-tag">pending</span>
+          <h3>Held</h3>
+          <p>Degraded mode (no API key) or classification still in flight. The signal is safely parked, never dropped.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Confidence tiers ──────────────────────────────────────────────── -->
+  <section class="band">
+    <div class="wrap tier-grid">
+      <div class="tier-copy">
+        <span class="kicker">Confidence, not guesswork</span>
+        <h2>The tier decides the destination.</h2>
+        <p class="band-sub">The classifier attaches a score to every intent, and the score — not a hard-coded rule per call site — chooses the route. That is the whole point: the "what do I do with this?" decision lives in one place, with a number you can audit.</p>
+      </div>
+      <div class="tiers">
+        <div class="tier" data-tier="high">
+          <span class="tier-name">HIGH</span>
+          <span class="tier-range">&gt; 0.85</span>
+          <span class="tier-route">→ direct route</span>
+        </div>
+        <div class="tier" data-tier="med">
+          <span class="tier-name">MEDIUM</span>
+          <span class="tier-range">0.65 – 0.85</span>
+          <span class="tier-route">→ crew_idd</span>
+        </div>
+        <div class="tier" data-tier="low">
+          <span class="tier-name">LOW</span>
+          <span class="tier-range">&lt; 0.65</span>
+          <span class="tier-route">→ aggregate</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Ingest modes + guarantees ─────────────────────────────────────── -->
+  <section class="band band--alt">
+    <div class="wrap">
+      <div class="band-head">
+        <span class="kicker">Ingest anything · lose nothing</span>
+        <h2>Four ways in. Two guarantees.</h2>
+      </div>
+      <div class="split">
+        <div class="split-col">
+          <h3 class="split-h">Ingest modes</h3>
+          <ul class="modes">
+            <li><span class="mode-k">text</span> a request or thread, straight in</li>
+            <li><span class="mode-k">file</span> point it at a document</li>
+            <li><span class="mode-k">alert</span> a monitoring alert with severity</li>
+            <li><span class="mode-k">webhook</span> <code>POST /webhook</code> from anything</li>
+          </ul>
+        </div>
+        <div class="split-col">
+          <h3 class="split-h">Guarantees</h3>
+          <div class="guarantee">
+            <h4>Store-first</h4>
+            <p>Signals are written to local SQLite <b>before</b> classification. If Claude is unreachable, the signal is still on disk — nothing is lost on failure.</p>
+          </div>
+          <div class="guarantee">
+            <h4>wicked-bus is optional</h4>
+            <p>Bus emission is fire-and-forget (<code>npx wicked-bus emit</code>). Failures are silent and signals run fine with no bus present — it is an integration, not a dependency.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Install / status ──────────────────────────────────────────────── -->
+  <section class="band">
+    <div class="wrap install-grid">
+      <div class="install-copy">
+        <span class="kicker">Run it today</span>
+        <h2>Not on npm yet — build from source.</h2>
+        <p class="band-sub">
+          wicked-signals is <b>early / pre-release</b> (v0.1.0) and is <b>not</b>
+          published to a registry. There is no <code>npm install -g</code> yet.
+          A working CLI, webhook server, and classifier live in the repo — clone
+          and build to try it. Set <code>ANTHROPIC_API_KEY</code> to classify;
+          without it, signals runs store-only (degraded mode).
+        </p>
+        <div class="events">
+          <span class="events-h">Emits</span>
+          <code>wicked.signals.signal.received</code>
+          <code>wicked.signals.signal.classified</code>
+          <code>wicked.signals.signal.routed</code>
+          <code>wicked.signals.action.launched</code>
+        </div>
+      </div>
+      <div class="install" role="group" aria-label="Build from source">
+        <div class="install-bar">
+          <span class="install-label">Build from source</span>
+          <button class="install-copy-btn" type="button" aria-label="Copy commands"
+            onclick="navigator.clipboard&&navigator.clipboard.writeText('git clone https://github.com/mikeparcewski/wicked-signals\ncd wicked-signals\nnpm install\nnpm run build\nnode dist/cli.js ingest --text \'Build a dark mode toggle\'').then(()=>{this.textContent='Copied';setTimeout(()=>{this.textContent='Copy';},1400);})">Copy</button>
+        </div>
+        <pre class="install-code"><code><span class="c">git</span> clone https://github.com/mikeparcewski/wicked-signals
+<span class="c">cd</span> wicked-signals
+<span class="c">npm</span> install
+<span class="c">npm</span> run build
+<span class="dim"># classify + route a signal (needs ANTHROPIC_API_KEY)</span>
+<span class="c">node</span> dist/cli.js ingest <span class="fl">--text</span> <span class="s">"Build a dark mode toggle"</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <SameGarden current="wicked-signals" />
+
+  <Footer repo={repo} />
+
+  <!-- illustrative classifier demo -->
+  <script is:inline>
+    (function () {
+      'use strict';
+      var SIGNALS = [
+        {
+          text: 'Summarize what changed in the last three commits.',
+          type: 'direct', num: 0.79, tier: 'MEDIUM', tierKey: 'med', route: 'direct_outcome',
+        },
+        {
+          text: 'Build a dark mode toggle for the web app.',
+          type: 'crew-launch · feature', num: 0.78, tier: 'MEDIUM', tierKey: 'med', route: 'crew_idd',
+        },
+        {
+          text: 'Database connection pool exhausted — p95 latency > 2s.',
+          type: 'crew-launch · ops', num: 0.71, tier: 'MEDIUM', tierKey: 'med', route: 'crew_idd',
+        },
+        {
+          text: 'maybe we should look at onboarding sometime',
+          type: 'unclear', num: 0.42, tier: 'LOW', tierKey: 'low', route: 'aggregate',
+        },
+      ];
+
+      var chips = Array.prototype.slice.call(document.querySelectorAll('.demo-chip'));
+      var elText = document.getElementById('demoText');
+      var elType = document.getElementById('demoType');
+      var elNum = document.getElementById('demoNum');
+      var elTier = document.getElementById('demoTier');
+      var elMeter = document.getElementById('demoMeter');
+      var elRoute = document.getElementById('demoRoute');
+      if (!elText) return;
+      var current = 0;
+
+      function apply(i) {
+        var s = SIGNALS[i];
+        var out = document.querySelector('.demo-out');
+        if (out) { out.classList.add('is-swap'); }
+        setTimeout(function () {
+          elText.textContent = s.text;
+          elType.textContent = s.type;
+          elNum.textContent = s.num.toFixed(2);
+          elTier.textContent = s.tier;
+          elTier.setAttribute('data-tier', s.tierKey);
+          elMeter.style.width = Math.round(s.num * 100) + '%';
+          elRoute.textContent = s.route;
+          if (out) { out.classList.remove('is-swap'); }
+        }, 140);
+        chips.forEach(function (c, j) { c.classList.toggle('is-active', j === i); });
+        current = i;
+      }
+
+      chips.forEach(function (chip) {
+        chip.addEventListener('click', function () {
+          var i = parseInt(chip.getAttribute('data-sig'), 10);
+          if (i !== current) apply(i);
+        });
+      });
+      document.getElementById('demoChips').addEventListener('keydown', function (e) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+          var n = e.key === 'ArrowRight' ? (current + 1) % SIGNALS.length : (current - 1 + SIGNALS.length) % SIGNALS.length;
+          apply(n); chips[n].focus(); e.preventDefault();
+        }
+      });
+    })();
+  </script>
+</Base>
